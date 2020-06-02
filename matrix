@@ -1,0 +1,351 @@
+#!/bin/bash
+
+#Class: cs344
+#Name:	Daniel J. Gonzalez
+#9.22.2018
+
+
+#Remove TMP file creation NOTE!
+
+dims(){
+	TMP="Filename$$"	#make a tempfile and store it in TMP variable
+
+	#now we test for command line errors
+	#if more than 2 args
+	if [[ "$#" -gt 2 ]]
+	then
+	       	echo "Error: too many args.\n" >&2 #redirect stdout to stderr
+		exit 1
+
+	###############################################################
+	#If args less or equal to 1
+	elif [[ "$#" -le 1 ]]
+	then
+		#Check stdin
+		cat > $TMP
+	###############################################################
+
+	#if args are not 2 and file does not exist
+	elif [[ "$#" == 2 && (! -f "$2" ) ]]
+	then
+		echo "Error: file not found or unreadable.\n" >&2
+		exit 1
+	else
+		cat "$2" > $TMP #Move the valid data to the TMP file
+	fi
+	
+	###############################################################
+	#Check if arg input fails
+	if [ ! $TMP ]
+	then
+		rm -f $TMP
+		exit 1
+	fi
+	################################################################
+	
+	#count rows and columns
+	row=$(wc -l < $TMP)
+	#add one to grep output to get proper number of columns
+	read -r line < $TMP
+	col=`echo $line | wc -w`
+	echo "$row $col" #print
+	rm -f $TMP #remove the temporary file
+	
+}
+
+
+transpose(){
+	
+	TMP="Filename$$" #creates/stores temporary file
+	
+	if [[ "$#" -gt 2 ]]	#If args greater than 2
+	then
+		echo "Error: too many args.\n" >&2 #Error msg to stderr
+		exit 1
+	################################################################
+	#if args less than or equal to 1
+	elif [[ "$#" -le 1 ]]
+	then	
+		cat > $TMP 	#Check stdin
+	################################################################
+	#test for 2 args/ does the file exits and is it readable
+	elif [[ "$#" == 2 && (! -f "$2" || ! -r "$2" ) ]]
+	then
+		echo "Error: File not found or unreadable.\n" >&2
+		exit 1
+	else
+		cat "$2" > $TMP
+	fi
+
+	##############################################################
+	if [ ! $TMP ]
+	then
+		rm -f $TMP
+		exit 1
+	fi
+	################################################################
+
+	read -r line < $TMP
+	col=`echo $line | wc -w`
+	#use columns count to move through matrix
+	#pipe into paste function to complete transpose for each column
+	for((i=1; i<="$col"; i++))
+	do
+		rowCut=$(cut -f "$i" "$TMP" | paste -s) #cut feild
+		echo "$rowCut"
+	done
+	
+	rm -f $TMP #remove the temporary file
+}
+
+
+mean(){
+	
+	TMP="Filename$$"
+	if [[ "$#" -gt 2 ]]
+	then
+		echo "Error: too many args.\n" >&2 #msg to stderr 
+		exit 1
+	############################################################
+	elif [[ "$#" -le 1 ]]
+	then 
+		cat > $TMP #check stdin
+	############################################################
+
+	#test that args are correct and file exists
+	elif [[ "$#" == 2 && (! -f "$2" ) ]]
+	then
+		echo "Error: file not found or unreadable.\n" >&2
+		exit 1
+	else
+		cat "$2" > $TMP #move data to the TMP file
+	fi
+
+	##############################################################
+	#if args test fails
+	if [ ! $TMP ] 
+	then
+		rm -f $TMP #Remove the TMP file
+		exit 1
+	fi
+	##############################################################
+	read -r line < "$TMP"
+	#echo $line
+	numberCol=$(echo $line | wc -w) #number of col
+	#echo $numberCol
+	for(( i=1; i<="$numberCol"; i++))
+	do
+		sum=0 #Holds the value of sum
+		counter=0 #Counts all the number of Columns
+		#cut the current column $i in the forLoop and store it
+		#inside the currentCol
+		currentCol=$(cut -f "$i" "$TMP")
+		#echo $currentCol
+		#find sum of currentCol and increment the counter
+		#use the sum and counter to perform mean calculation
+		for x in $currentCol
+		do
+			sum=$((sum + x))
+			counter=$((counter + 1))
+		done
+		#use mean calculation from notes
+		mean=$((($sum + ($counter/2)*( ($sum>0)*2-1))/$counter ))
+		#echo Mean: $mean
+                if [[ $numberCol == $i ]]
+		then
+			if [[ $i -le "$numberCol" ]]
+			then
+				echo -n $mean
+				#echo -n -e "\t"
+			fi
+		else
+			echo -n $mean
+		fi
+		if [[ $i -lt "$numberCol" ]]
+		then
+			echo -n -e "\t"
+		fi
+	done
+	echo ""
+
+	rm -f $TMP
+
+}
+
+add(){
+
+	#make sure both files (argument $1 and $2) exist (args passed from cmd $2 and $3)
+	if [[ ! -f "$1" || ! -f "$2" ]]
+	then
+		echo "Error: Valid argument is needed.\n">&2 #to stderr
+		exit 1
+	fi
+	######################################################################
+
+	#retrieve and store number of rows and columns
+	rowsFile1=$(wc -l < $1) #passed from $2 on command line
+	rowsFile2=$(wc -l < $2) #passed from $3 on command line
+	read -r line < $1
+	colsFile1=`echo $line | wc -w`
+	read -r line < $2
+	colsFile2=`echo $line | wc -w`
+	
+	########################################################################
+
+	#both matrices must be the same dimensons or Error
+	if [[ ! (($rowsFile1 == $rowsFile2) && ($colsFile1 == $colsFile2)) ]]
+	then
+		echo "Error: matrix files are not the same dimensions \n" >&2
+		exit 1
+	fi
+	#use rows and cols variables to loop through row/col index
+	
+	#########################################################################
+	
+	#from 1 to number of rows in the files
+	for((i=1; i<="$rowsFile1"; i++))
+	do
+		row1=$(head "-$i" "$1" | tail -1) #cut entire row $i file1
+		row2=$(head "-$i" "$2" | tail -1) #cut entire row $i file2
+		
+			#from 1 to last column
+			for((n=1; n<="$colsFile1"; n++))
+			do
+				a=$(cat <<< "$row1" | cut -d'	' -f $n)  #cut feild-by-feild ($n) from row $i of file1
+				b=$(cat <<< "$row2" | cut -d'	' -f $n)  #cut feild-by-feild ($n) from row $i of file2
+			       	
+				#sum those values
+				sum=$(($a + $b))
+				
+				#the \n character will start newline
+				#the \t char will tab
+				#if we are at the end of the columns
+				#we need a newline to run through the matrix
+				if [ $n == "$colsFile1" ]
+				then
+					echo -e "$sum" 
+				else
+					echo -n -e "$sum\t" 
+				fi
+			done
+		done
+
+}
+
+
+multiply(){
+	
+	#grab row/col count from both files
+	rowFile1=$(wc -l < $2) 
+	rowFile2=$(wc -l < $3)
+	read -r line < $2
+	colFile1=`echo $line | wc -w`
+	read -r line < $3
+	colFile2=`echo $line | wc -w`
+
+	######################################################################
+
+	#test dimensions for matrix multiply calculation
+	#IF cols in file1 not equal to rows in file2
+	if [[ !($colFile1 == $rowFile2) ]]
+	then
+		echo "Error invalid matrix dimensions\n" >&2
+		exit 1
+	fi
+
+	######################################################################
+
+	#Move outside loop from first row to last row of file1
+	for ((i=1; i<="$rowFile1"; i++))
+	do
+		file1Row=$(head "-$i" "$2" | tail -1) #clip entire row $i from file 1
+
+		#from 1 to last column in file 2
+		for ((z=1; z<="$colFile2"; z++))
+		do
+			#cut feild-by-field ($z)
+			#use pipe to place file 1 row and file 2 column side by side as rows
+			file2Col=$(cut -f $z $3 | tr '\n' '\t') #pipe thru translate for mystring insertion 
+			product=0 #reset for new row/col
+			#from 1 to end of col in file one
+			for ((j=1; j<="$colFile1"; j++))
+			do
+				#prepare for multiplication and addition for each
+				#feild in file 1 row and file 2 col 1
+				x=$(cat <<< "$file1Row" | cut -d'	' -f $j) #cut field $j of file1Row
+				y=$(cat <<< "$file2Col" | cut -d'	' -f $j) #cut field $j of file2Col (tr makes this like a row)
+				product=$(($product + ($x*$y))) #increment addition of product each time
+			done
+
+			#print each product until end of file 2 col 
+			#then exit inner loop (from 1 to #col in file 2)
+			if [ $z == $colFile2 ]
+			then
+				echo -e "$product" 
+			else
+				echo -n -e "$product\t"
+			fi
+		done
+	done
+
+}
+
+		
+
+
+
+#Argument tests and execution
+
+#dims() function tester
+#if argument 1 is dims we take user arg and pass it to dims()
+if [ "$1" == "dims" ]
+then
+	dims $@  #@ all args
+
+#transpose() function tester
+elif [ "$1" == "transpose" ]
+then
+	transpose $@	#Pass all args to transpose
+
+
+#mean function tester
+elif [ "$1" == "mean" ]
+then 
+	mean $@ #pass all args to mean
+
+
+#add function tester
+elif [ "$1" == "add" ]
+then
+	#if too many args error msg to stderr
+	if [[ "$#" -gt 3 ]]
+	then
+		echo "Error: too many arguments.\n" >&2
+		exit 1
+	elif [[ "$#" < 3 ]]
+	then
+		echo "Error: too few args.\n" >&2
+		exit 1
+	fi
+	#call add function
+	add $2 $3 #pass argment 2 and 3 into function
+
+
+elif [ "$1" == "multiply" ]
+then
+	if [[ "$#" -gt 3 ]]
+	then
+		echo "Error: too many args.\n" >&2
+		exit 1
+	elif [[ "$#" < 3 ]]
+	then
+		echo "Error: too few args.\n" >&2
+		exit 1
+	fi
+	multiply $@
+#Bad command if anything besides the above entered 
+else
+	echo "Failed Bad command!\n" >&2
+	exit 1
+fi
+
