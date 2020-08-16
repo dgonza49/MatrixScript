@@ -1,6 +1,6 @@
 # MatrixScript
 This is a Bash Script
-To Run this command-line program a number of steps are required:
+To Run this command-line program:
 
 1. Clone or download repository:
     $  git clone https://github.com/dgonza49/MatrixScript.git
