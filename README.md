@@ -1,5 +1,5 @@
 # MatrixScript
-This is a bash Script Run on Linux
+This is a Bash Script
 To Run this command-line program a number of steps are required:
 
 1. Clone or download repository:
